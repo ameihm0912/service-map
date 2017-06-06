@@ -7,10 +7,8 @@
 
 package servicelib
 
-type SystemGroup struct {
-	Name string `json:"name,omitempty"`
-	ID   int    `json:"id,omitempty"`
-
-	Host    []Host    `json:"hosts,omitempty"`
-	Website []Website `json:"websites,omitempty"`
+type Owner struct {
+	ID       int    `json:"id,omitempty"`
+	Team     string `json:"team,omitempty"`
+	Operator string `json:"operator,omitempty"`
 }

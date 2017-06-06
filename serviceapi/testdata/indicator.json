@@ -1,0 +1,12 @@
+{
+    "asset_type": "hostname",
+    "asset_identifier": "host.mozilla.com",
+    "zone": "dc",
+    "timestamp_utc": "2017-06-07T18:25:43.511Z",
+    "event_source_name": "scanner",
+    "likelihood_indicator": "medium",
+    "details": {
+        "test1": 1,
+        "test2": "testing 2"
+    }
+}

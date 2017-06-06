@@ -7,8 +7,7 @@
 
 package servicelib
 
-type Owner struct {
-	Operator string `json:"operator,omitempty"`
-	Team     string `json:"team,omitempty"`
-	V2BKey   string `json:"v2bkey,omitempty"`
+type AssetGroup struct {
+	ID   int    `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 }

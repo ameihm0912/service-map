@@ -1,0 +1,104 @@
+{
+    "category": "rra_data",
+    "details": {
+        "data": {
+            "INTERNAL": [],
+            "PUBLIC": [
+                "General application data"
+            ],
+            "RESTRICTED": [
+                "Secret stuff",
+                "Database information"
+            ],
+            "SECRET": [],
+            "default": "PUBLIC"
+        },
+        "metadata": {
+            "RRA_version": "255",
+            "analyst": "user@mozilla.com",
+            "contacts": [
+                "Service Owner"
+            ],
+            "description": "A valid test RRA document",
+            "developer": "",
+            "operator": "",
+            "owner": "Service Owner",
+            "risk_record": "https://bugzilla.mozilla.org/show_bug.cgi?id=0000000",
+            "scope": "Mozilla",
+            "service": "Valid test RRA",
+            "service_provided": ""
+        },
+        "recommendations": {
+            "HIGH": [],
+            "LOW": [
+                "This is a low priority recommendation"
+            ],
+            "MAXIMUM": [],
+            "MEDIUM": [],
+            "Unknown": []
+        },
+        "risk": {
+            "availability": {
+                "finances": {
+                    "impact": "LOW",
+                    "probability": "LOW",
+                    "rationale": "Rationale"
+                },
+                "productivity": {
+                    "impact": "LOW",
+                    "probability": "LOW",
+                    "rationale": "Rationale"
+                },
+                "reputation": {
+                    "impact": "MEDIUM",
+                    "probability": "LOW",
+                    "rationale": "Rationale"
+                }
+            },
+            "confidentiality": {
+                "finances": {
+                    "impact": "LOW",
+                    "probability": "LOW",
+                    "rationale": "Rationale"
+                },
+                "productivity": {
+                    "impact": "LOW",
+                    "probability": "LOW",
+                    "rationale": "Rationale"
+                },
+                "reputation": {
+                    "impact": "LOW",
+                    "probability": "LOW",
+                    "rationale": "Rationale"
+                }
+            },
+            "integrity": {
+                "finances": {
+                    "impact": "LOW",
+                    "probability": "LOW",
+                    "rationale": "Rationale"
+                },
+                "productivity": {
+                    "impact": "LOW",
+                    "probability": "LOW",
+                    "rationale": "Rationale"
+                },
+                "reputation": {
+                    "impact": "LOW",
+                    "probability": "LOW",
+                    "rationale": "Rationale"
+                }
+            }
+        }
+    },
+    "lastmodified": "2017-05-24T19:34:58.994000+00:00",
+    "severity": "INFO",
+    "source": "",
+    "summary": "RRA for valid test RRA",
+    "tags": [
+        "RRA",
+        "service",
+        "1.0.1"
+    ],
+    "timestamp": "2017-06-07T16:00:12.648292+00:00"
+}

@@ -9,14 +9,17 @@ package servicelib
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 )
 
-// Describes an RRA.
-type RRAService struct {
-	Name string `json:"name,omitempty"`
-	ID   int    `json:"id,omitempty"`
+// Describes an RRA, as stored by service-map
+type RRA struct {
+	Name        string    `json:"name,omitempty"`
+	LastUpdated time.Time `json:"lastupdated"`
+	ID          int       `json:"id,omitempty"`
 
 	/* Attribute impact scores */
 	AvailRepImpact string `json:"availability_reputation_impact,omitempty"`
@@ -42,20 +45,19 @@ type RRAService struct {
 
 	DefData string `json:"default_data_classification,omitempty"`
 
-	// Supporting system groups
-	SupportGrps []SystemGroup `json:"supporting_system_groups,omitempty"`
-
-	RawRRA json.RawMessage `json:"rra_details,omitempty"` // The raw RRA as described in ES
+	RawRRA interface{} `json:"rra_details,omitempty"` // The original raw RRA
 }
 
-func (r *RRAService) Validate() error {
+func (r *RRA) Validate() error {
 	if r.Name == "" {
-		return fmt.Errorf("rra must have a name")
+		return errors.New("rra must have a name")
 	}
 	return nil
 }
 
-func (r *RRAService) HighestRiskReputation() (float64, float64) {
+// For a given RRA, return the impact and probability value for the highest
+// risk scenario (according to the RRA) related to reputation.
+func (r *RRA) HighestRiskReputation() (float64, float64) {
 	// XXX Assumed values have been normalized here
 	repavi, _ := ImpactValueFromLabel(r.AvailRepImpact)
 	repavp, _ := ImpactValueFromLabel(r.AvailRepProb)
@@ -83,7 +85,9 @@ func (r *RRAService) HighestRiskReputation() (float64, float64) {
 	return *candi, *candp
 }
 
-func (r *RRAService) HighestRiskProductivity() (float64, float64) {
+// For a given RRA, return the impact and probability value for the highest
+// risk scenario (according to the RRA) related to productivity.
+func (r *RRA) HighestRiskProductivity() (float64, float64) {
 	// XXX Assumed values have been normalized here
 	prdavi, _ := ImpactValueFromLabel(r.AvailPrdImpact)
 	prdavp, _ := ImpactValueFromLabel(r.AvailPrdProb)
@@ -111,7 +115,9 @@ func (r *RRAService) HighestRiskProductivity() (float64, float64) {
 	return *candi, *candp
 }
 
-func (r *RRAService) HighestRiskFinancial() (float64, float64) {
+// For a given RRA, return the impact and probability value for the highest
+// risk scenario (according to the RRA) related to finance.
+func (r *RRA) HighestRiskFinancial() (float64, float64) {
 	// XXX Assumed values have been normalized here
 	finavi, _ := ImpactValueFromLabel(r.AvailFinImpact)
 	finavp, _ := ImpactValueFromLabel(r.AvailFinProb)
@@ -163,10 +169,56 @@ type RRAAttribute struct {
 	Probability float64 `json:"probability"`
 }
 
+// NewRRA converts a byte buffer containing a raw RRA JSON document (e.g.,
+// published by rra2json) and converts it, returning an RRA type.
+func NewRRA(buf []byte) (ret RRA, err error) {
+	var raw RawRRA
+	err = json.Unmarshal(buf, &raw)
+	if err != nil {
+		return
+	}
+	// Validate the input RRA, this will also do any normalization that is required
+	err = raw.Validate()
+	if err != nil {
+		return
+	}
+
+	ret.Name = raw.Details.Metadata.Service
+	ret.DefData = raw.Details.Data.Default
+	ret.LastUpdated = raw.LastModified
+
+	ret.AvailRepImpact = raw.Details.Risk.Availability.Reputation.Impact
+	ret.AvailPrdImpact = raw.Details.Risk.Availability.Productivity.Impact
+	ret.AvailFinImpact = raw.Details.Risk.Availability.Finances.Impact
+	ret.IntegRepImpact = raw.Details.Risk.Integrity.Reputation.Impact
+	ret.IntegPrdImpact = raw.Details.Risk.Integrity.Productivity.Impact
+	ret.IntegFinImpact = raw.Details.Risk.Integrity.Finances.Impact
+	ret.ConfiRepImpact = raw.Details.Risk.Confidentiality.Reputation.Impact
+	ret.ConfiPrdImpact = raw.Details.Risk.Confidentiality.Productivity.Impact
+	ret.ConfiFinImpact = raw.Details.Risk.Confidentiality.Finances.Impact
+
+	ret.AvailRepProb = raw.Details.Risk.Availability.Reputation.Probability
+	ret.AvailPrdProb = raw.Details.Risk.Availability.Productivity.Probability
+	ret.AvailFinProb = raw.Details.Risk.Availability.Finances.Probability
+	ret.IntegRepProb = raw.Details.Risk.Integrity.Reputation.Probability
+	ret.IntegPrdProb = raw.Details.Risk.Integrity.Productivity.Probability
+	ret.IntegFinProb = raw.Details.Risk.Integrity.Finances.Probability
+	ret.ConfiRepProb = raw.Details.Risk.Confidentiality.Reputation.Probability
+	ret.ConfiPrdProb = raw.Details.Risk.Confidentiality.Productivity.Probability
+	ret.ConfiFinProb = raw.Details.Risk.Confidentiality.Finances.Probability
+
+	err = json.Unmarshal(buf, &ret.RawRRA)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 // Describes calculated risk for a service, based on an RRA and known
 // data points
-type RRAServiceRisk struct {
-	RRA RRAService `json:"rra"` // The RRA we are describing
+type RRARisk struct {
+	RRA RRA `json:"rra"` // The RRA we are describing
 
 	// The attribute from the RRA we use as the basis for risk calculations
 	// (business impact) for the service. For example, this could be "reputation",
@@ -193,7 +245,7 @@ type RRAServiceRisk struct {
 	Scenarios []RiskScenario `json:"scenarios"` // Risk scenarios
 }
 
-func (r *RRAServiceRisk) Validate() error {
+func (r *RRARisk) Validate() error {
 	err := r.RRA.Validate()
 	if err != nil {
 		return err
@@ -216,7 +268,7 @@ type RiskScenario struct {
 // Validates a RiskScenario for consistency
 func (r *RiskScenario) Validate() error {
 	if r.Name == "" {
-		return fmt.Errorf("scenario must have a name")
+		return errors.New("scenario must have a name")
 	}
 	if r.Coverage != "none" && r.Coverage != "partial" &&
 		r.Coverage != "complete" && r.Coverage != "unknown" {
@@ -239,8 +291,7 @@ func ImpactValueFromLabel(l string) (float64, error) {
 		return ImpactLowValue, nil
 	case "unknown":
 		// XXX Return low here if the value is set to unknown to handle older
-		// format RRAs and still use the data in risk calculation; returning
-		// valid data here is important for riskFindHighestImpact()
+		// format RRAs and still use the data in risk calculation.
 		return ImpactLowValue, nil
 	}
 	return 0, fmt.Errorf("invalid impact label %v", l)
@@ -297,7 +348,7 @@ func ImpactLabelFromValue(v float64) (string, error) {
 	return "", fmt.Errorf("invalid impact value %v", v)
 }
 
-// Given a risk score from 1 - 16, convert that sore into
+// Given a risk score from 1 - 16, convert that score into
 // the string value that represents the risk
 func NormalLabelFromValue(v float64) string {
 	if v >= 13 {
@@ -308,4 +359,148 @@ func NormalLabelFromValue(v float64) string {
 		return "medium"
 	}
 	return "low"
+}
+
+// RawRRA defines the structure expected as input when a new RRA is posted to
+// service-map. More specifically, this would be the RRA json as is submitted
+// to service-map from rra2json.
+//
+// We do not define all fields that would be present in that input document, but
+// limit it to the fields we actually make use of for risk processing.
+type RawRRA struct {
+	Details      RawRRADetails `json:"details"`
+	LastModified time.Time     `json:"lastmodified"`
+}
+
+func (r *RawRRA) Validate() error {
+	return r.Details.Validate()
+}
+
+type RawRRADetails struct {
+	Metadata RawRRAMetadata `json:"metadata"`
+	Risk     RawRRARisk     `json:"risk"`
+	Data     RawRRAData     `json:"data"`
+}
+
+func (r *RawRRADetails) Validate() error {
+	err := r.Metadata.Validate()
+	if err != nil {
+		return err
+	}
+	err = r.Risk.Validate()
+	if err != nil {
+		return fmt.Errorf("%q: %v", r.Metadata.Service, err)
+	}
+	err = r.Data.Validate()
+	if err != nil {
+		return fmt.Errorf("%q: %v", r.Metadata.Service, err)
+	}
+	return nil
+}
+
+type RawRRAMetadata struct {
+	Service string `json:"service"`
+}
+
+func (r *RawRRAMetadata) Validate() error {
+	if r.Service == "" {
+		return errors.New("rra has no service name")
+	}
+	// Do some sanitization of the service name if necessary
+	r.Service = strings.Replace(r.Service, "\n", " ", -1)
+	r.Service = strings.TrimSpace(r.Service)
+	return nil
+}
+
+type RawRRAData struct {
+	Default string `json:"default"`
+}
+
+func (r *RawRRAData) Validate() error {
+	if r.Default == "" {
+		return errors.New("rra has no default data classification")
+	}
+	// Sanitize the data classification
+	// XXX This should likely be checked against a list of known valid
+	// strings, and we just reject importing an RRA that has a data
+	// classification value we don't know about.
+	r.Default = strings.ToLower(r.Default)
+	// Convert from some older classification values
+	switch r.Default {
+	case "internal":
+		r.Default = "confidential internal"
+	case "restricted":
+		r.Default = "confidential restricted"
+	case "secret":
+		r.Default = "confidential secret"
+	}
+	return nil
+}
+
+type RawRRARisk struct {
+	Confidentiality RawRRARiskAttr `json:"confidentiality"`
+	Integrity       RawRRARiskAttr `json:"integrity"`
+	Availability    RawRRARiskAttr `json:"availability"`
+}
+
+func (r *RawRRARisk) Validate() error {
+	err := r.Confidentiality.Validate()
+	if err != nil {
+		return err
+	}
+	err = r.Integrity.Validate()
+	if err != nil {
+		return err
+	}
+	err = r.Availability.Validate()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type RawRRARiskAttr struct {
+	Reputation   RawRRAMeasure `json:"reputation"`
+	Finances     RawRRAMeasure `json:"finances"`
+	Productivity RawRRAMeasure `json:"productivity"`
+}
+
+func (r *RawRRARiskAttr) Validate() error {
+	err := r.Reputation.Validate()
+	if err != nil {
+		return err
+	}
+	err = r.Finances.Validate()
+	if err != nil {
+		return err
+	}
+	err = r.Productivity.Validate()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type RawRRAMeasure struct {
+	Impact      string `json:"impact"`
+	Probability string `json:"probability"`
+}
+
+func (r *RawRRAMeasure) Validate() (err error) {
+	r.Impact, err = SanitizeImpactLabel(r.Impact)
+	if err != nil {
+		return err
+	}
+	// XXX If the probability value is unset, just default it to unknown
+	// here and continue. We can proceed without this value, if we at least
+	// have the impact. Without this though certain calculation datapoints
+	// may not be possible.
+	if r.Probability == "" {
+		r.Probability = "unknown"
+	}
+	r.Probability, err = SanitizeImpactLabel(r.Probability)
+	if err != nil {
+		return err
+	}
+	return nil
 }
