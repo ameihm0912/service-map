@@ -19,6 +19,7 @@ var db dbConn
 type dbInterface interface {
 	dbExec(string, ...interface{}) error
 	dbQuery(string, ...interface{}) (*sql.Rows, error)
+	dbQueryRow(string, ...interface{}) *sql.Row
 }
 
 type dbConn struct {
@@ -32,6 +33,10 @@ func (d *dbConn) dbExec(qs string, args ...interface{}) error {
 
 func (d *dbConn) dbQuery(qs string, args ...interface{}) (*sql.Rows, error) {
 	return d.db.Query(qs, args...)
+}
+
+func (d *dbConn) dbQueryRow(qs string, args ...interface{}) *sql.Row {
+	return d.db.QueryRow(qs, args...)
 }
 
 type dbTx struct {
@@ -55,6 +60,10 @@ func (d *dbTx) dbQuery(qs string, args ...interface{}) (*sql.Rows, error) {
 	return d.tx.Query(qs, args...)
 }
 
+func (d *dbTx) dbQueryRow(qs string, args ...interface{}) *sql.Row {
+	return d.tx.QueryRow(qs, args...)
+}
+
 func dbNewTx() (ret dbTx, err error) {
 	ret.tx, err = db.db.Begin()
 	return ret, err
@@ -67,6 +76,50 @@ func dbInit(c config) error {
 		c.Database.Host, c.Database.Username, c.Database.Password)
 	db.db, err = sql.Open("postgres", connstr)
 	return err
+}
+
+// Given a raw indicator, locate the asset associated with that indicator in the
+// database. If the asset is not found, a new one will be added and this asset
+// will be returned.
+func dbLocateAssetFromIndicator(indicator slib.RawIndicator) (ret slib.Asset, err error) {
+	var aid int
+	err = db.dbQueryRow(`SELECT assetid FROM asset
+		WHERE assettype = $1 AND name = $2 AND zone = $3`, indicator.Type,
+		indicator.Name, indicator.Zone).Scan(&aid)
+	if err == nil {
+		// Asset was found
+		return dbGetAssetID(aid)
+	}
+	if err != sql.ErrNoRows {
+		return
+	}
+	// Otherwise, add the new asset and return it
+	err = db.dbQueryRow(`INSERT INTO asset
+		(assettype, name, zone, description, lastindicator)
+		VALUES ($1, $2, $3, $4, $5) RETURNING assetid`,
+		indicator.Type, indicator.Name, indicator.Zone,
+		indicator.Description, indicator.Timestamp).Scan(&aid)
+	if err != nil {
+		return
+	}
+	return dbGetAssetID(aid)
+}
+
+// Get an asset from the database by ID
+func dbGetAssetID(aid int) (ret slib.Asset, err error) {
+	var desc sql.NullString
+	err = db.dbQueryRow(`SELECT assetid, assettype,
+		name, zone, description, lastindicator
+		FROM asset WHERE assetid = $1`, aid).Scan(&ret.ID,
+		&ret.Type, &ret.Name, &ret.Zone, &desc,
+		&ret.LastIndicator)
+	if err != nil {
+		return
+	}
+	if desc.Valid {
+		ret.Description = desc.String
+	}
+	return
 }
 
 // Add an owner to the database

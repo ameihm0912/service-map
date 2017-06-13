@@ -13,7 +13,7 @@ import (
 )
 
 func newIndicatorInit() error {
-	newIndicatorChan = make(chan slib.Indicator, 64)
+	newIndicatorChan = make(chan slib.RawIndicator, 64)
 	go func() {
 		var err error
 		for {
@@ -26,17 +26,20 @@ func newIndicatorInit() error {
 	return nil
 }
 
-func addIndicator(indicator slib.Indicator) error {
+func addIndicator(indicator slib.RawIndicator) error {
 	log.logf("processing new indicator for %q, type %q", indicator.Name, indicator.Type)
 	detailsbuf, err := json.Marshal(indicator.Details)
 	if err != nil {
 		return err
 	}
-	return db.dbExec(`INSERT INTO asset
-		(assettype, name, zone, description, timestamp, event_source,
-		likelihood_indicator, details)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		indicator.Type, indicator.Name, indicator.Zone, indicator.Description,
+	asset, err := dbLocateAssetFromIndicator(indicator)
+	if err != nil {
+		return err
+	}
+	return db.dbExec(`INSERT INTO indicator
+		(timestamp, event_source, likelihood_indicator,
+		assetid, details)
+		VALUES ($1, $2, $3, $4, $5)`,
 		indicator.Timestamp, indicator.EventSource, indicator.Likelihood,
-		string(detailsbuf))
+		asset.ID, string(detailsbuf))
 }

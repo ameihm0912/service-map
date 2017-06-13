@@ -13,7 +13,8 @@ import (
 	"time"
 )
 
-type Indicator struct {
+// RawIndicator represents an indicator as would be submitted to serviceapi
+type RawIndicator struct {
 	Type        string      `json:"asset_type,omitempty"`           // Asset type e.g., hostname, website, etc
 	Name        string      `json:"asset_identifier,omitempty"`     // Name of asset
 	Zone        string      `json:"zone,omitempty"`                 // Zone asset identified in
@@ -24,7 +25,7 @@ type Indicator struct {
 	Details     interface{} `json:"details,omitempty"`              // Free form details sub structure
 }
 
-func (i *Indicator) Validate() error {
+func (i *RawIndicator) Validate() error {
 	if i.Type == "" {
 		return errors.New("indicator asset type missing")
 	}

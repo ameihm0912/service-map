@@ -5,6 +5,7 @@
 # Ensure PGHOST, PGUSER, and PGPASSWORD are set in the environment
 
 psql -f - servicemap << EOF
+DROP TABLE IF EXISTS indicator;
 DROP TABLE IF EXISTS rra_assetgroup;
 DROP TABLE IF EXISTS asset;
 DROP TABLE IF EXISTS assetowners;
@@ -62,16 +63,24 @@ CREATE TABLE asset (
 	ownerid INTEGER REFERENCES assetowners (ownerid),
 	triageoverride TEXT,
 	description TEXT,
+	lastindicator TIMESTAMP WITH TIME ZONE NOT NULL,
+	UNIQUE(assettype, name, zone)
+);
+CREATE TABLE indicator (
+	indicatorid SERIAL PRIMARY KEY,
 	timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
 	event_source TEXT NOT NULL,
 	likelihood_indicator TEXT NOT NULL,
+	assetid INTEGER REFERENCES asset (assetid),
 	details JSONB NOT NULL,
-	UNIQUE(assettype, name, zone, timestamp)
+	UNIQUE(assetid, event_source, timestamp)
 );
 CREATE INDEX ON asset (name);
 CREATE INDEX ON asset (assettype);
 CREATE INDEX ON asset (assetgroupid);
-CREATE INDEX ON asset USING gin (details);
+CREATE INDEX ON indicator (assetid);
+CREATE INDEX ON indicator (timestamp);
+CREATE INDEX ON indicator USING gin (details);
 EOF
 
 exit 0

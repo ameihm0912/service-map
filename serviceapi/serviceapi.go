@@ -39,7 +39,7 @@ func (c *config) validate() error {
 var (
 	cfg              config
 	log              logger
-	newIndicatorChan chan slib.Indicator
+	newIndicatorChan chan slib.RawIndicator
 	newRRAChan       chan slib.RRA
 	wg               sync.WaitGroup
 )

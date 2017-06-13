@@ -21,7 +21,7 @@ func getPing(rw http.ResponseWriter, req *http.Request) {
 
 func postIndicator(rw http.ResponseWriter, req *http.Request) {
 	var (
-		indicator slib.Indicator
+		indicator slib.RawIndicator
 		err       error
 	)
 	decoder := json.NewDecoder(req.Body)
