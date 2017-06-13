@@ -78,6 +78,53 @@ func dbInit(c config) error {
 	return err
 }
 
+// Produce a string suitable to write back to a client that represents the legacy
+// asset owner list
+func dbGetLegacyOwners() (ret string, err error) {
+	rows, err := db.dbQuery(`SELECT name, zone, assettype,
+		team, operator, triageoverride FROM asset
+		LEFT OUTER JOIN assetowners ON
+		(asset.ownerid = assetowners.ownerid)
+		ORDER BY name`)
+	if err != nil {
+		return
+	}
+	var (
+		name, zone, assettype                   string
+		team, operator, triageoverride          string
+		sqlteam, sqloperator, sqltriageoverride sql.NullString
+	)
+	for rows.Next() {
+		err = rows.Scan(&name, &zone, &assettype,
+			&sqlteam, &sqloperator, &sqltriageoverride)
+		if err != nil {
+			rows.Close()
+			return
+		}
+		if sqlteam.Valid {
+			team = sqlteam.String
+		} else {
+			team = "unset"
+		}
+		if sqloperator.Valid {
+			operator = sqloperator.String
+		} else {
+			operator = "unset"
+		}
+		if sqltriageoverride.Valid {
+			triageoverride = sqltriageoverride.String
+		} else {
+			triageoverride = operator + "-" + team
+		}
+		ret += fmt.Sprintf("%v %v %v %v %v %v\n", name, assettype, zone,
+			operator, team, triageoverride)
+	}
+	if err = rows.Err(); err != nil {
+		return
+	}
+	return
+}
+
 // Given a raw indicator, locate the asset associated with that indicator in the
 // database. If the asset is not found, a new one will be added and this asset
 // will be returned.

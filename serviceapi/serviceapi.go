@@ -133,6 +133,7 @@ func main() {
 	s.HandleFunc("/indicator", apiWrapper(postIndicator)).Methods("POST")
 	s.HandleFunc("/ping", apiWrapper(getPing)).Methods("GET")
 	s.HandleFunc("/rra", apiWrapper(postRRA)).Methods("POST")
+	s.HandleFunc("/owners", apiWrapper(getOwners)).Methods("GET")
 	err = http.ListenAndServe(":8080", context.ClearHandler(r))
 	if err != nil {
 		log.logf("http.ListenAndServe: %v", err)

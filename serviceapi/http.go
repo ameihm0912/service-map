@@ -53,3 +53,13 @@ func postRRA(rw http.ResponseWriter, req *http.Request) {
 	}
 	newRRAChan <- newrra
 }
+
+func getOwners(rw http.ResponseWriter, req *http.Request) {
+	obuf, err := dbGetLegacyOwners()
+	if err != nil {
+		http.Error(rw, err.Error(), 500)
+		return
+	}
+	fmt.Fprintf(rw, "# name type zone operator team triageoverride\n")
+	fmt.Fprintf(rw, "%v", obuf)
+}
