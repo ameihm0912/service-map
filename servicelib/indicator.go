@@ -19,7 +19,7 @@ type RawIndicator struct {
 	Name        string      `json:"asset_identifier,omitempty"`     // Name of asset
 	Zone        string      `json:"zone,omitempty"`                 // Zone asset identified in
 	Description string      `json:"description,omitempty"`          // Description for asset
-	Timestamp   time.Time   `json:"timestamp_utc"`                  // Timestamp indicatator is relevant for
+	Timestamp   time.Time   `json:"timestamp_utc"`                  // Timestamp indicator is relevant for
 	EventSource string      `json:"event_source_name,omitempty"`    // Source of indicator
 	Likelihood  string      `json:"likelihood_indicator,omitempty"` // Likelihood indicator value
 	Details     interface{} `json:"details,omitempty"`              // Free form details sub structure
