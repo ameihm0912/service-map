@@ -46,10 +46,12 @@ func postRRA(rw http.ResponseWriter, req *http.Request) {
 	buf, err = ioutil.ReadAll(req.Body)
 	if err != nil {
 		http.Error(rw, err.Error(), 500)
+		return
 	}
 	newrra, err := slib.NewRRA(buf)
 	if err != nil {
 		http.Error(rw, "rra json malformed", 400)
+		return
 	}
 	newRRAChan <- newrra
 }
